@@ -1,0 +1,39 @@
+name: 'ReleaseWithTag'
+
+on:
+  push:
+    tags:
+      - '*'
+
+permissions:
+  contents: read
+
+jobs:
+  PR:
+    name: 'ReleaseWithTag'
+    runs-on:
+      labels: self-hosted
+    #    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Install Maven Dependencies
+        run: |
+          mvn clean package
+          mv target/shipping-1.0.jar shipping.jar
+
+      - name: Build
+        run: |
+          echo $GITHUB_REF_NAME > VERSION
+          zip -r shipping-$GITHUB_REF_NAME.zip shipping.jar VERSION schema
+
+      - name: Release App
+        run: |
+          curl -sSf -u "admin:$ARTIFACTORY_PASSWORD" -X PUT  -T shipping-$GITHUB_REF_NAME.zip http://artifactory.rdevopsb72.online:8081/artifactory/shipping/shipping-$GITHUB_REF_NAME.zip
+        env:
+          ARTIFACTORY_PASSWORD: ${{ secrets.ARTIFACTORY_PASSWORD }}
